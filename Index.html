@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Anestesiología | Gestión Mensual de Turnos</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(98deg, #0b2b44 0%, #1c6e8f 100%);
+            color: white;
+            padding: 22px 32px;
+        }
+        .header h1 { margin: 0; font-size: 1.7rem; font-weight: 600; }
+        .header p { margin: 8px 0 0; opacity: 0.85; font-size: 0.85rem; }
+        .stats-bar {
+            display: flex;
+            gap: 18px;
+            padding: 18px 32px;
+            background: #f4f7fc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            border-left: 5px solid #2c7da0;
+            min-width: 130px;
+        }
+        .stat-card span { font-size: 12px; color: #3b5c6e; font-weight: 500; display: block; }
+        .stat-card .value { font-size: 28px; font-weight: 800; color: #0b2b44; line-height: 1.2; }
+        .controls {
+            padding: 20px 32px;
+            background: white;
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary { background: #2c7da0; color: white; }
+        .btn-primary:hover { background: #1f5e7a; }
+        .btn-success { background: #2e8b57; color: white; }
+        .btn-excel { background: #1f7b4d; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .btn-excel:hover { background: #0e5a36; }
+        .btn-warning { background: #e67e22; color: white; }
+        .btn-feriado { background: #8e44ad; color: white; }
+        .btn-feriado:hover { background: #6c3483; }
+        select, input {
+            padding: 8px 12px;
+            border-radius: 30px;
+            border: 1px solid #cbd5e1;
+            font-size: 13px;
+        }
+        .table-container {
+            overflow-x: auto;
+            padding: 20px 24px;
+            max-height: 68vh;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            border: 1px solid #dce5ec;
+            padding: 8px 5px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background: #eef2f9;
+            position: sticky;
+            top: 0;
+            font-weight: 700;
+            color: #1e4663;
+        }
+        .turno-8h { background-color: #d9f0e1; color: #145c33; font-weight: 500; }
+        .turno-12h { background-color: #d9eaff; color: #004e7c; font-weight: 500; }
+        .vacaciones { background-color: #fff3cd; color: #856404; }
+        .weekend-x { background-color: #f8d7da; color: #a11e2c; font-weight: bold; }
+        .feriado { background-color: #e8d5f5; color: #6c3483; font-weight: bold; }
+        .horas-badge {
+            font-weight: 800;
+            background: #e2ecf5;
+            padding: 3px 8px;
+            border-radius: 50px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top:0;left:0;
+            width:100%;height:100%;
+            background:rgba(0,0,0,0.5);
+            justify-content:center;
+            align-items:center;
+            z-index:2000;
+        }
+        .modal-content {
+            background:white;
+            border-radius:28px;
+            padding:28px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .legend {
+            padding: 15px 28px;
+            background: #f9fbfe;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .legend-color { width: 22px; height: 22px; border-radius: 6px; display: inline-block; margin-right: 6px; }
+        .feriado-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .feriado-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .feriado-item button {
+            margin-left: 10px;
+            padding: 2px 8px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateY(0);}
+            100% { opacity: 0; visibility: hidden; transform: translateY(10px);}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏥 CRONOGRAMA MENSUAL - ANESTESIOLOGÍA</h1>
+        <p>Turnos 8h / 12h | Meta 160h mensuales | Sábado/Domingo/Feriado = X (descanso institucional) | Colores por tipo de turno</p>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-card"><span>👨‍⚕️ Médicos</span><div class="value" id="totalMedicos">0</div></div>
+        <div class="stat-card"><span>⏱️ Horas requeridas</span><div class="value" id="totalHorasRequeridas">0</div></div>
+        <div class="stat-card"><span>✅ Horas asignadas</span><div class="value" id="totalHorasAsignadas">0</div></div>
+        <div class="stat-card"><span>🏖️ Vacaciones mes</span><div class="value" id="medicosVacaciones">0</div></div>
+        <div class="stat-card"><span>📅 Feriados</span><div class="value" id="feriadosCount">0</div></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-success" onclick="abrirModalAgregar()">➕ Agregar médico</button>
+        <button class="btn btn-primary" onclick="asignarHorariosGlobal()">🔄 Asignar horarios (mes completo)</button>
+        <button class="btn btn-warning" onclick="resetearHorariosGlobal()">🗑️ Resetear</button>
+        <button class="btn btn-excel" onclick="exportarExcelMesCompleto()">📎 DESCARGAR EXCEL (MES COMPLETO)</button>
+        <button class="btn btn-feriado" onclick="abrirModalFeriados()">🎌 Gestionar Feriados</button>
+        <select id="yearSelect" onchange="cambiarYear()"><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option></select>
+        <select id="monthSelect" onchange="cambiarMes()">
+            <option value="0">ENERO</option><option value="1">FEBRERO</option><option value="2">MARZO</option><option value="3">ABRIL</option>
+            <option value="4">MAYO</option><option value="5">JUNIO</option><option value="6">JULIO</option><option value="7">AGOSTO</option>
+            <option value="8">SEPTIEMBRE</option><option value="9">OCTUBRE</option><option value="10">NOVIEMBRE</option><option value="11">DICIEMBRE</option>
+        </select>
+        <span style="font-size:12px; background:#eef2f9; padding:6px 12px; border-radius:30px;">📅 Días del mes: <strong id="diasMes">30</strong></span>
+    </div>
+
+    <div class="table-container">
+        <table id="horarioTable">
+            <thead id="tableHeader"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="legend">
+        <div><span class="legend-color" style="background:#d4edda;"></span> Turno 8h (H2/H4)</div>
+        <div><span class="legend-color" style="background:#cce5ff;"></span> Turno 12h (H8/H9)</div>
+        <div><span class="legend-color" style="background:#fff3cd;"></span> Vacaciones</div>
+        <div><span class="legend-color" style="background:#f8d7da;"></span> Fin de semana (X) - descanso</div>
+        <div><span class="legend-color" style="background:#e8d5f5;"></span> Feriado (X) - descanso</div>
+        <div><span>🔵 H2: Mañana 07-15:30 | 🟢 H4: Tarde 12:30-21:00</span></div>
+        <div><span>🔴 H8: Diurno 12h | 🟣 H9: Nocturno 12h</span></div>
+    </div>
+</div>
+
+<!-- MODAL MEDICO -->
+<div id="medicoModal" class="modal"><div class="modal-content">
+    <div style="display:flex; justify-content:space-between;"><h3 id="modalTitle">Agregar Médico</h3><span class="close" onclick="cerrarModal()" style="cursor:pointer; font-size:28px;">&times;</span></div>
+    <div class="form-group"><label>Nombre completo</label><input type="text" id="medicoNombre" placeholder="Ej: VASQUEZ CARDENAS MERY"></div>
+    <div class="form-group"><label>Cédula</label><input type="text" id="medicoCedula" placeholder="Ej: 1712730884"></div>
+    <div class="form-group"><label>Tipo turno base</label><select id="medicoTurnoBase"><option value="H2">H2 - Mañana 8h</option><option value="H4">H4 - Tarde 8h</option><option value="H8">H8 - Diurno 12h</option><option value="H9">H9 - Nocturno 12h</option></select></div>
+    <div class="form-group"><label>Vacaciones (semana 1-4)</label><select id="vacSemana"><option value="0">Sin vacaciones</option><option value="1">Semana 1</option><option value="2">Semana 2</option><option value="3">Semana 3</option><option value="4">Semana 4</option></select><small>Semana sin turnos</small></div>
+    <div class="form-group"><button class="btn btn-primary" onclick="guardarMedico()">Guardar</button><button class="btn btn-warning" onclick="cerrarModal()">Cancelar</button></div>
+    <div id="modalError" class="error" style="color:red; font-size:12px;"></div>
+</div></div>
+
+<!-- MODAL FERIADOS -->
+<div id="feriadoModal" class="modal"><div class="modal-content">
+    <div style="display:flex; justify-content:space-between;"><h3>🎌 Gestionar Feriados - <span id="feriadoModalMonth"></span></h3><span onclick="cerrarModalFeriados()" style="cursor:pointer; font-size:28px;">&times;</span></div>
+    <div class="form-group">
+        <label>Agregar nuevo feriado:</label>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <select id="feriadoDia" style="width:80px;"></select>
+            <input type="text" id="feriadoNombre" placeholder="Nombre del feriado (ej: 'Carnaval', 'Navidad')" style="flex:1;">
+            <button class="btn btn-primary" onclick="agregarFeriado()">➕ Agregar</button>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Feriados configurados:</label>
+        <div id="feriadosList" class="feriado-list"></div>
+    </div>
+    <div class="form-group">
+        <button class="btn btn-warning" onclick="cerrarModalFeriados()">Cerrar</button>
+    </div>
+</div></div>
+
+<script>
+    // ---------- MODELO GLOBAL ----------
+    let medicos = [];
+    let currentYear = 2026;
+    let currentMonth = 0;   // 0=Enero
+    let editIndex = -1;
+    
+    // Estructura para almacenar feriados: { year: 2026, month: 0, day: 1, name: "Año Nuevo" }
+    let feriados = [];
+
+    const monthNames = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    const horariosDef = { 'H2':{horas:8,nombre:'Mañana 8h'}, 'H4':{horas:8,nombre:'Tarde 8h'}, 'H8':{horas:12,nombre:'Diurno 12h'}, 'H9':{horas:12,nombre:'Nocturno 12h'} };
+
+    // Feriados predefinidos de ejemplo (Ecuador - puedes modificarlos)
+    const feriadosPredefinidos = [
+        { month: 0, day: 1, name: "Año Nuevo" },
+        { month: 4, day: 1, name: "Día del Trabajo" },
+        { month: 4, day: 24, name: "Batalla de Pichincha" },
+        { month: 7, day: 10, name: "Día de la Independencia" },
+        { month: 9, day: 9, name: "Día de la Independencia de Guayaquil" },
+        { month: 10, day: 2, name: "Día de los Difuntos" },
+        { month: 10, day: 3, name: "Día de la Independencia de Cuenca" },
+        { month: 11, day: 25, name: "Navidad" }
+    ];
+
+    function inicializarFeriados() {
+        const savedFeriados = localStorage.getItem('feriados_anestesia');
+        if (savedFeriados) {
+            feriados = JSON.parse(savedFeriados);
+        } else {
+            // Cargar feriados predefinidos para varios años
+            feriados = [];
+            for (let year = 2026; year <= 2028; year++) {
+                feriadosPredefinidos.forEach(fer => {
+                    feriados.push({ year: year, month: fer.month, day: fer.day, name: fer.name });
+                });
+            }
+        }
+    }
+
+    function guardarFeriados() {
+        localStorage.setItem('feriados_anestesia', JSON.stringify(feriados));
+    }
+
+    function esFeriado(year, month, day) {
+        return feriados.some(f => f.year === year && f.month === month && f.day === day);
+    }
+
+    function getNombreFeriado(year, month, day) {
+        const feriado = feriados.find(f => f.year === year && f.month === month && f.day === day);
+        return feriado ? feriado.name : '';
+    }
+
+    function getDaysInMonth(year, month) { return new Date(year, month+1, 0).getDate(); }
+    function getWeekDays(year, month, weekNum) { const start = 1 + (weekNum-1)*7; const end = Math.min(start+6, getDaysInMonth(year, month)); return {inicio:start, fin:end}; }
+    
+    // Determinar si un día es sábado (6) o domingo (0) o feriado
+    function esDiaDescanso(year, month, dia) {
+        const fecha = new Date(year, month, dia);
+        const diaSemana = fecha.getDay();
+        return (diaSemana === 0 || diaSemana === 6 || esFeriado(year, month, dia));
+    }
+
+    function calcularHorasMedico(medico) {
+        let total = 0;
+        const days = getDaysInMonth(currentYear, currentMonth);
+        for(let d=1; d<=days; d++) {
+            let code = medico.horarios[d];
+            if(code && horariosDef[code]) total += horariosDef[code].horas;
+        }
+        return total;
+    }
+
+    function esTurno12h(code) { return code === 'H8' || code === 'H9'; }
+    function validarNoConsecutivo12h(medico) {
+        const days = getDaysInMonth(currentYear, currentMonth);
+        for(let i=1; i<days; i++) if(esTurno12h(medico.horarios[i]) && esTurno12h(medico.horarios[i+1])) return false;
+        return true;
+    }
+
+    // Aplica vacaciones y días de descanso (fines de semana + feriados)
+    function reasignarVacacionesYDescansos() {
+        const days = getDaysInMonth(currentYear, currentMonth);
+        medicos.forEach(med => {
+            if(!med.horarios) med.horarios = {};
+            for(let i=1;i<=days;i++) {
+                // si es día de descanso (finde o feriado), se fuerza "X"
+                if(esDiaDescanso(currentYear, currentMonth, i)) med.horarios[i] = 'X';
+                else if(med.horarios[i] !== 'V' && med.horarios[i] !== 'X') med.horarios[i] = null;
+            }
+            if(med.vacacionesSemana && med.vacacionesSemana>=1 && med.vacacionesSemana<=4) {
+                const {inicio,fin} = getWeekDays(currentYear, currentMonth, med.vacacionesSemana);
+                for(let i=inicio; i<=fin && i<=days; i++) {
+                    med.horarios[i] = 'V';
+                }
+            }
+        });
+    }
+
+    function asignarHorariosIndividual(medico) {
+        const days = getDaysInMonth(currentYear, currentMonth);
+        const metaHoras = 160;
+        const turnoBase = medico.turnoBase;
+        const horasPorTurno = horariosDef[turnoBase]?.horas || 8;
+        const es12hBase = esTurno12h(turnoBase);
+        
+        // Días disponibles (no descanso y no vacaciones)
+        let disponibles = [];
+        for(let i=1;i<=days;i++) {
+            if(!medico.horarios[i] && !esDiaDescanso(currentYear, currentMonth, i)) disponibles.push(i);
+        }
+        let turnosNecesarios = Math.round(metaHoras / horasPorTurno);
+        if(turnosNecesarios > disponibles.length) turnosNecesarios = disponibles.length;
+        let seleccionados = [];
+        if(es12hBase) {
+            for(let idx=0; idx<disponibles.length && seleccionados.length < turnosNecesarios; idx++) {
+                let dia = disponibles[idx];
+                if(!seleccionados.includes(dia-1) && !seleccionados.includes(dia+1)) seleccionados.push(dia);
+            }
+        } else seleccionados = disponibles.slice(0, turnosNecesarios);
+        for(let d of seleccionados) medico.horarios[d] = turnoBase;
+        
+        let horasAct = calcularHorasMedico(medico);
+        if(horasAct < metaHoras - 4) {
+            for(let i=1;i<=days && calcularHorasMedico(medico) < metaHoras;i++) {
+                if(!medico.horarios[i] && !esDiaDescanso(currentYear, currentMonth, i)) {
+                    medico.horarios[i] = (es12hBase ? 'H2' : turnoBase);
+                }
+            }
+        }
+        if(es12hBase && !validarNoConsecutivo12h(medico)) {
+            for(let i=1;i<days;i++) if(esTurno12h(medico.horarios[i]) && esTurno12h(medico.horarios[i+1])) { medico.horarios[i+1] = 'H2'; break; }
+        }
+        // Finalmente, asegurar que ningún día de descanso tenga turno
+        for(let i=1;i<=days;i++) if(esDiaDescanso(currentYear, currentMonth, i)) medico.horarios[i] = 'X';
+    }
+
+    function asignarHorariosGlobal() {
+        reasignarVacacionesYDescansos();
+        medicos.forEach(m => asignarHorariosIndividual(m));
+        renderizarTabla();
+        mostrarNotif("✅ Horarios asignados para todo el mes (fines de semana y feriados = X)", "#2e8b57");
+    }
+
+    function resetearHorariosGlobal() {
+        const days = getDaysInMonth(currentYear, currentMonth);
+        medicos.forEach(med => {
+            for(let i=1;i<=days;i++) {
+                if(esDiaDescanso(currentYear, currentMonth, i)) med.horarios[i] = 'X';
+                else if(med.horarios[i] !== 'V') med.horarios[i] = null;
+            }
+        });
+        renderizarTabla();
+        mostrarNotif("Horarios reseteados (días de descanso mantienen X)", "#e67e22");
+    }
+
+    function cambiarYear() { currentYear = parseInt(document.getElementById('yearSelect').value); resetearHorariosGlobal(); asignarHorariosGlobal(); actualizarFeriadosCount(); }
+    function cambiarMes() { currentMonth = parseInt(document.getElementById('monthSelect').value); resetearHorariosGlobal(); asignarHorariosGlobal(); actualizarFeriadosCount(); }
+
+    // CRUD Médicos
+    function abrirModalAgregar() { editIndex=-1; limpiarModal(); document.getElementById('medicoModal').style.display='flex'; }
+    function limpiarModal() {
+        document.getElementById('medicoNombre').value='';
+        document.getElementById('medicoCedula').value='';
+        document.getElementById('medicoTurnoBase').value='H2';
+        document.getElementById('vacSemana').value='0';
+        document.getElementById('modalError').innerText='';
+        document.getElementById('modalTitle').innerText='Agregar Médico';
+    }
+    function guardarMedico() {
+        let nombre = document.getElementById('medicoNombre').value.trim();
+        if(!nombre) { document.getElementById('modalError').innerText='Nombre requerido'; return; }
+        let cedula = document.getElementById('medicoCedula').value.trim() || 'N/A';
+        let turnoBase = document.getElementById('medicoTurnoBase').value;
+        let vacSemana = parseInt(document.getElementById('vacSemana').value);
+        const days = getDaysInMonth(currentYear, currentMonth);
+        let horariosInicial = {};
+        for(let i=1;i<=days;i++) {
+            if(esDiaDescanso(currentYear, currentMonth, i)) horariosInicial[i] = 'X';
+            else horariosInicial[i] = null;
+        }
+        if(vacSemana>0) {
+            const {inicio,fin}=getWeekDays(currentYear, currentMonth, vacSemana);
+            for(let i=inicio;i<=fin && i<=days;i++) horariosInicial[i]='V';
+        }
+        const nuevoMed = { nombre, cedula, turnoBase, vacacionesSemana: vacSemana>0 ? vacSemana : null, horarios: horariosInicial };
+        if(editIndex>=0 && editIndex<medicos.length) medicos[editIndex]=nuevoMed;
+        else medicos.push(nuevoMed);
+        cerrarModal();
+        asignarHorariosGlobal();
+        renderizarTabla();
+        mostrarNotif("Médico guardado", "#2e8b57");
+    }
+    function editarMedico(idx) { editIndex=idx; const m=medicos[idx]; document.getElementById('modalTitle').innerText='Editar Médico'; document.getElementById('medicoNombre').value=m.nombre; document.getElementById('medicoCedula').value=m.cedula; document.getElementById('medicoTurnoBase').value=m.turnoBase; document.getElementById('vacSemana').value=m.vacacionesSemana||'0'; document.getElementById('medicoModal').style.display='flex'; }
+    function eliminarMedico(idx) { if(confirm("¿Eliminar médico?")) { medicos.splice(idx,1); renderizarTabla(); mostrarNotif("Eliminado","#e74c3c"); } }
+    function cambiarTurnoClick(medIdx, dia) {
+        let med = medicos[medIdx];
+        if(med.horarios[dia] === 'V') { mostrarNotif("No modificar vacaciones","#e67e22"); return; }
+        if(esDiaDescanso(currentYear, currentMonth, dia)) { mostrarNotif("Día de descanso (fin de semana o feriado): siempre X","#e67e22"); return; }
+        const orden = ['H2','H4','H8','H9', null];
+        let actual = med.horarios[dia];
+        let idxActual = orden.indexOf(actual);
+        let nuevo = orden[(idxActual+1) % orden.length];
+        med.horarios[dia] = nuevo;
+        if(!validarNoConsecutivo12h(med) && (nuevo==='H8' || nuevo==='H9')) mostrarNotif("⚠️ Turnos 12h no pueden ser consecutivos", "#e67e22");
+        renderizarTabla();
+    }
+    function cerrarModal() { document.getElementById('medicoModal').style.display='none'; }
+    
+    // Gestión de Feriados
+    function abrirModalFeriados() {
+        actualizarSelectorDias();
+        document.getElementById('feriadoModalMonth').innerText = `${monthNames[currentMonth]} ${currentYear}`;
+        actualizarListaFeriados();
+        document.getElementById('feriadoModal').style.display='flex';
+    }
+    
+    function cerrarModalFeriados() {
+        document.getElementById('feriadoModal').style.display='none';
+    }
+    
+    function actualizarSelectorDias() {
+        const days = getDaysInMonth(currentYear, currentMonth);
+        const select = document.getElementById('feriadoDia');
+        select.innerHTML = '';
+        for(let i=1; i<=days; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            const fecha = new Date(currentYear, currentMonth, i);
+            const diaSemana = fecha.toLocaleDateString('es', { weekday: 'short' });
+            option.textContent = `${i} - ${diaSemana}`;
+            select.appendChild(option);
+        }
+    }
+    
+    function actualizarListaFeriados() {
+        const feriadosDelMes = feriados.filter(f => f.year === currentYear && f.month === currentMonth);
+        const container = document.getElementById('feriadosList');
+        if(feriadosDelMes.length === 0) {
+            container.innerHTML = '<p style="color:#999;">No hay feriados configurados para este mes</p>';
+            return;
+        }
+        container.innerHTML = '';
+        feriadosDelMes.sort((a,b) => a.day - b.day).forEach((fer, idx) => {
+            const div = document.createElement('div');
+            div.className = 'feriado-item';
+            div.innerHTML = `
+                <span><strong>Día ${fer.day}</strong> - ${fer.name}</span>
+                <button onclick="eliminarFeriado(${fer.day}, '${fer.name}')">🗑️ Eliminar</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+    
+    function agregarFeriado() {
+        const dia = parseInt(document.getElementById('feriadoDia').value);
+        const nombre = document.getElementById('feriadoNombre').value.trim();
+        if(!nombre) {
+            mostrarNotif("Por favor ingrese un nombre para el feriado", "#e67e22");
+            return;
+        }
+        // Verificar si ya existe
+        const existe = feriados.some(f => f.year === currentYear && f.month === currentMonth && f.day === dia);
+        if(existe) {
+            mostrarNotif(`⚠️ El día ${dia} ya tiene un feriado configurado`, "#e67e22");
+            return;
+        }
+        feriados.push({ year: currentYear, month: currentMonth, day: dia, name: nombre });
+        guardarFeriados();
+        document.getElementById('feriadoNombre').value = '';
+        actualizarListaFeriados();
+        resetearHorariosGlobal();
+        asignarHorariosGlobal();
+        mostrarNotif(`✅ Feriado "${nombre}" agregado para el ${dia} de ${monthNames[currentMonth]}`, "#2e8b57");
+    }
+    
+    function eliminarFeriado(dia, nombre) {
+        if(confirm(`¿Eliminar feriado "${nombre}" del día ${dia}?`)) {
+            const index = feriados.findIndex(f => f.year === currentYear && f.month === currentMonth && f.day === dia);
+            if(index !== -1) {
+                feriados.splice(index, 1);
+                guardarFeriados();
+                actualizarListaFeriados();
+                resetearHorariosGlobal();
+                asignarHorariosGlobal();
+                mostrarNotif(`✅ Feriado "${nombre}" eliminado`, "#2e8b57");
+            }
+        }
+    }
+    
+    function actualizarFeriadosCount() {
+        const count = feriados.filter(f => f.year === currentYear && f.month === currentMonth).length;
+        document.getElementById('feriadosCount').innerText = count;
+    }
+    
+    function mostrarNotif(msg, bg) { let d=document.createElement('div'); d.innerText=msg; d.style.position='fixed'; d.style.bottom='20px'; d.style.right='20px'; d.style.backgroundColor=bg; d.style.color='white'; d.style.padding='12px 20px'; d.style.borderRadius='40px'; d.style.zIndex='9999'; d.style.fontWeight='bold'; d.style.animation='fadeOut 2.5s forwards'; document.body.appendChild(d); setTimeout(()=>d.remove(),2500); }
+
+    // =============== EXCEL: MES COMPLETO ===============
+    function exportarExcelMesCompleto() {
+        const daysTotal = getDaysInMonth(currentYear, currentMonth);
+        const mesNombre = monthNames[currentMonth];
+        let htmlContent = `<!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>Horarios_Anestesia_${mesNombre}_${currentYear}</title>
+        <style>
+            body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; margin: 20px; }
+            h2 { color: #1e4663; border-left: 8px solid #2c7da0; padding-left: 15px; }
+            .subtitle { color: #2c3e50; margin-bottom: 20px; font-size: 14px; }
+            table { border-collapse: collapse; width: 100%; margin-top: 15px; box-shadow: 0 1px 3px #ccc; }
+            th { background: #2c7da0; color: white; padding: 8px 4px; border: 1px solid #256f8a; font-size: 11px; }
+            td { border: 1px solid #bdd4e2; padding: 6px 4px; text-align: center; font-size: 10px; }
+            .turno-8h { background-color: #d4edda !important; }
+            .turno-12h { background-color: #cce5ff !important; }
+            .vacaciones { background-color: #fff3cd !important; }
+            .weekend-x { background-color: #f8d7da !important; color: #a11e2c !important; font-weight: bold; }
+            .feriado { background-color: #e8d5f5 !important; color: #6c3483 !important; font-weight: bold; }
+            .medico-nombre { font-weight: bold; text-align: left; background-color: #f8f9fc; }
+            .footer-legend { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 15px; font-size: 10px; }
+        </style>
+        </head>
+        <body>
+        <h2>🏥 CRONOGRAMA MENSUAL DE TURNOS - ANESTESIOLOGÍA</h2>
+        <div class="subtitle"><strong>${mesNombre} ${currentYear}</strong> | Total médicos: ${medicos.length} | Meta: 160h mensuales por médico<br>
+        <span style="background:#f8d7da;">&nbsp;X = Fin de semana (descanso)&nbsp;</span>
+        <span style="background:#e8d5f5;">&nbsp;X = Feriado (descanso)&nbsp;</span></div>
+        <table>
+            <thead>
+                <tr><th>#</th><th>MÉDICO / CÉDULA</th><th>TURNO BASE</th><th>HORAS/MES</th>`;
+        for(let d=1; d<=daysTotal; d++) {
+            const fecha = new Date(currentYear, currentMonth, d);
+            const diaSemana = fecha.toLocaleDateString('es', { weekday: 'short' }).toUpperCase();
+            const esFinde = (fecha.getDay() === 0 || fecha.getDay() === 6);
+            const esFeri = esFeriado(currentYear, currentMonth, d);
+            let estiloFondo = '';
+            if(esFeri) estiloFondo = 'style="background:#8e44ad;"';
+            else if(esFinde) estiloFondo = 'style="background:#b33c2f;"';
+            htmlContent += `<th ${estiloFondo}>DÍA ${d}<br><span style="font-size:9px;">${diaSemana}</span>${esFeri ? '<br>🎌' : ''}</th>`;
+        }
+        htmlContent += `</tr></thead><tbody>`;
+        
+        medicos.forEach((med, idx) => {
+            const horasMes = calcularHorasMedico(med);
+            htmlContent += `<tr>
+                <td style="font-weight:bold;">${idx+1}</td>
+                <td class="medico-nombre"><strong>${med.nombre}</strong><br><span style="font-size:9px;">${med.cedula}</span></td>
+                <td>${med.turnoBase}</td>
+                <td><strong>${horasMes}/160</strong></td>`;
+            for(let d=1; d<=daysTotal; d++) {
+                let code = med.horarios[d];
+                let display = "", clase = "";
+                if(code === 'V') { display = "🏖️ VAC"; clase = "vacaciones"; }
+                else if(esFeriado(currentYear, currentMonth, d)) { display = "🎌 X (Feriado)"; clase = "feriado"; }
+                else if(code === 'X') { display = "❌ X"; clase = "weekend-x"; }
+                else if(code === 'H2') { display = "H2 · Mañana 8h"; clase = "turno-8h"; }
+                else if(code === 'H4') { display = "H4 · Tarde 8h"; clase = "turno-8h"; }
+                else if(code === 'H8') { display = "H8 · Diurno 12h"; clase = "turno-12h"; }
+                else if(code === 'H9') { display = "H9 · Nocturno 12h"; clase = "turno-12h"; }
+                else { display = "⚪ LIBRE"; clase = ""; }
+                htmlContent += `<td class="${clase}">${display}</td>`;
+            }
+            htmlContent += `</tr>`;
+        });
+        
+        // Mostrar feriados del mes en el pie
+        const feriadosMes = feriados.filter(f => f.year === currentYear && f.month === currentMonth);
+        if(feriadosMes.length > 0) {
+            htmlContent += `<tr style="background:#f3e8ff;"><td colspan="4" style="text-align:left;"><strong>🎌 Feriados del mes:</strong></td>`;
+            for(let d=1; d<=daysTotal; d++) {
+                const fer = feriadosMes.find(f => f.day === d);
+                htmlContent += `<td style="background:#f3e8ff; font-size:9px;">${fer ? fer.name : ''}</td>`;
+            }
+            htmlContent += `</tr>`;
+        }
+        
+        htmlContent += `</tbody></table>
+        <div class="footer-legend">
+            <strong>📌 LEYENDA DE TURNOS Y COLORES:</strong><br>
+            🔵 H2: Mañana (07:00-15:30) – 8h &nbsp;|&nbsp; 🟢 H4: Tarde/Noche (12:30-21:00) – 8h &nbsp;|&nbsp; 🔴 H8: Diurno 12h (07:00-19:30) &nbsp;|&nbsp; 🟣 H9: Nocturno 12h (19:00-07:30)<br>
+            🟢 Fondo verde claro: Turnos 8h &nbsp;|&nbsp; 🔵 Fondo azul claro: Turnos 12h &nbsp;|&nbsp; 🟡 Amarillo: Vacaciones &nbsp;|&nbsp; 🔴 Fondo rojo con X: SÁBADOS Y DOMINGOS<br>
+            🟣 Fondo morado: FERIADOS<br>
+            ⚠️ Los turnos de 12h NO se asignan en días consecutivos.<br>
+            <em>Documento generado el ${new Date().toLocaleString()}</em>
+        </div>
+        </body></html>`;
+        
+        const blob = new Blob([htmlContent], { type: "application/vnd.ms-excel" });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = `Cronograma_Anestesia_${mesNombre}_${currentYear}_MES_COMPLETO.xls`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        mostrarNotif("✅ EXCEL generado: mes completo con fines de semana, feriados y colores", "#1f7b4d");
+    }
+    
+    // RENDER EN PANTALLA
+    function renderizarTabla() {
+        const days = getDaysInMonth(currentYear, currentMonth);
+        const totalReq = medicos.length * 160;
+        let totalAsig = 0;
+        medicos.forEach(m => totalAsig += calcularHorasMedico(m));
+        let vacCount = medicos.filter(m => m.vacacionesSemana && (()=>{ const w = m.vacacionesSemana; if(!w) return false; const {inicio,fin}=getWeekDays(currentYear,currentMonth,w); for(let d=inicio;d<=fin;d++) if(!esDiaDescanso(currentYear,currentMonth,d)) return true; return false; })()).length;
+        document.getElementById('totalMedicos').innerText = medicos.length;
+        document.getElementById('totalHorasRequeridas').innerText = totalReq;
+        document.getElementById('totalHorasAsignadas').innerText = totalAsig;
+        document.getElementById('medicosVacaciones').innerText = vacCount;
+        document.getElementById('diasMes').innerText = days;
+        actualizarFeriadosCount();
+        
+        let thead = `<tr><th>#</th><th>Médico / Cédula</th><th>Turno Base</th><th>Horas/Mes</th>`;
+        for(let d=1; d<=days; d++) {
+            const esFinde = (new Date(currentYear, currentMonth, d).getDay() === 0 || new Date(currentYear, currentMonth, d).getDay() === 6);
+            const esFeri = esFeriado(currentYear, currentMonth, d);
+            let estiloFondo = '';
+            if(esFeri) estiloFondo = 'style="background:#e8d5f5; color:#6c3483;"';
+            else if(esFinde) estiloFondo = 'style="background:#f5c6cb; color:#721c24;"';
+            const nombreFeriado = esFeri ? ` (${getNombreFeriado(currentYear, currentMonth, d)})` : '';
+            thead += `<th ${estiloFondo}>Día ${d}${nombreFeriado}</th>`;
+        }
+        thead += `<th>Acciones</th></tr>`;
+        document.getElementById('tableHeader').innerHTML = thead;
+        
+        let tbody = '';
+        medicos.forEach((med, idx) => {
+            const horas = calcularHorasMedico(med);
+            tbody += `<tr>`;
+            tbody += `<td style="font-weight:bold;">${idx+1}</td>`;
+            tbody += `<td style="text-align:left;"><strong>${med.nombre}</strong><br><span style="font-size:10px;">${med.cedula}</span></td>`;
+            tbody += `<td style="background:#f4f2f0;">${med.turnoBase}</td>`;
+            tbody += `<td class="horas-badge">${horas}/160</td>`;
+            for(let d=1; d<=days; d++) {
+                let cod = med.horarios[d];
+                let clase = '', texto = '', titulo='';
+                if(cod === 'V') { clase = 'vacaciones'; texto = '🏖️ VAC'; titulo='Vacaciones'; }
+                else if(esFeriado(currentYear, currentMonth, d)) { clase = 'feriado'; texto = '🎌 X'; titulo=`Feriado: ${getNombreFeriado(currentYear, currentMonth, d)}`; }
+                else if(cod === 'X') { clase = 'weekend-x'; texto = '❌ X'; titulo='Fin de semana - descanso'; }
+                else if(cod === 'H2') { clase = 'turno-8h'; texto = 'H2'; titulo='Mañana 8h'; }
+                else if(cod === 'H4') { clase = 'turno-8h'; texto = 'H4'; titulo='Tarde 8h'; }
+                else if(cod === 'H8') { clase = 'turno-12h'; texto = 'H8'; titulo='Diurno 12h'; }
+                else if(cod === 'H9') { clase = 'turno-12h'; texto = 'H9'; titulo='Nocturno 12h'; }
+                else { clase = ''; texto = '⚪'; titulo='Libre (clic)'; }
+                if(cod !== 'V' && cod !== 'X' && !esFeriado(currentYear, currentMonth, d)) tbody += `<td class="${clase}" onclick="cambiarTurnoClick(${idx}, ${d})" style="cursor:pointer;" title="${titulo}">${texto}</td>`;
+                else tbody += `<td class="${clase}" title="${titulo}">${texto}</td>`;
+            }
+            tbody += `<td><button class="btn" style="background:#3498db;color:white;padding:4px 8px;margin:2px;" onclick="editarMedico(${idx})">✏️</button> <button class="btn" style="background:#e74c3c;color:white;padding:4px 8px;" onclick="eliminarMedico(${idx})">🗑️</button></td>`;
+            tbody += `</tr>`;
+        });
+        document.getElementById('tableBody').innerHTML = tbody;
+    }
+    
+    function initDemo() {
+        inicializarFeriados();
+        medicos = [
+            { nombre: 'VASQUEZ CARDENAS MERY', cedula: '1712730884', turnoBase: 'H2', vacacionesSemana: null, horarios: {} },
+            { nombre: 'ESPINOSA GONZALEZ SILVIA', cedula: '1754770814', turnoBase: 'H2', vacacionesSemana: null, horarios: {} },
+            { nombre: 'CISNEROS CARDENAS GINA', cedula: '3040054342', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'PAREDES CHICO TRANSITO', cedula: '1715510739', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'RAZA DE LA VEGA MARY', cedula: '1711542587', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'CAISAPANTA GRACIELA', cedula: '5503163420', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'VILLALOBOS GONZALEZ DAYVANIS', cedula: '1758736969', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'SIZALIMA PUCHA MARCELO', cedula: '1003225867', turnoBase: 'H4', vacacionesSemana: null, horarios: {} },
+            { nombre: 'TITUAÑA CISNEROS ANDREA', cedula: '1722071410', turnoBase: 'H4', vacacionesSemana: null, horarios: {} },
+            { nombre: 'JIMENEZ JESSICA', cedula: '1234567890', turnoBase: 'H4', vacacionesSemana: null, horarios: {} },
+            { nombre: 'NAVARRO VAZQUEZ YUNIEL', cedula: '1756157986', turnoBase: 'H4', vacacionesSemana: null, horarios: {} },
+            { nombre: 'AREVALO REYES ANA', cedula: '1724020522', turnoBase: 'H4', vacacionesSemana: null, horarios: {} },
+            { nombre: 'RIVADENEYRA CUZME RUTH', cedula: '1600520397', turnoBase: 'H8', vacacionesSemana: 2, horarios: {} },
+            { nombre: 'BORJA VILLACIS NATHALY', cedula: '1722584115', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'ROMERO SUAREZ DAVID', cedula: '1722584116', turnoBase: 'H8', vacacionesSemana: 4, horarios: {} },
+            { nombre: 'RAMOS ALMEIDA ZAIDA', cedula: '1719161265', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'NARANJO PROAÑO MARIA', cedula: '1804239885', turnoBase: 'H8', vacacionesSemana: 3, horarios: {} },
+            { nombre: 'APONTE RODRIGUEZ AKAIDA', cedula: '1758765828', turnoBase: 'H8', vacacionesSemana: null, horarios: {} },
+            { nombre: 'ESCOBAR GUTIERREZ ANDRES', cedula: '1725235459', turnoBase: 'H8', vacacionesSemana: null, horarios: {} }
+        ];
+        const days = getDaysInMonth(currentYear, currentMonth);
+        medicos.forEach(m => {
+            m.horarios = {};
+            for(let i=1;i<=days;i++) {
+                if(esDiaDescanso(currentYear, currentMonth, i)) m.horarios[i] = 'X';
+                else m.horarios[i] = null;
+            }
+            if(m.vacacionesSemana){
+                let {inicio,fin}=getWeekDays(currentYear,currentMonth,m.vacacionesSemana);
+                for(let i=inicio;i<=fin && i<=days;i++) m.horarios[i] = 'V';
+            }
+        });
+        asignarHorariosGlobal();
+        renderizarTabla();
+    }
+    
+    window.onclick = function(e) { if(e.target === document.getElementById('medicoModal')) cerrarModal(); if(e.target === document.getElementById('feriadoModal')) cerrarModalFeriados(); };
+    initDemo();
+</script>
+</body>
+</html>
